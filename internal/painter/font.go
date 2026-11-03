@@ -194,6 +194,8 @@ func ClearFontCache() {
 
 	runBufferMut.Lock()
 	clear(shapeCache)
+	// cddrop: the shaper LRU otherwise retains obsolete theme fonts.
+	shaper = &shaping.HarfbuzzShaper{}
 	runBufferMut.Unlock()
 }
 
