@@ -123,8 +123,7 @@ func (s *settings) apply() {
 }
 
 func (s *settings) fileChanged() {
-	s.load()
-	s.apply()
+	s.load() // load/setupTheme already notifies listeners.
 }
 
 func (s *settings) setupTheme() {

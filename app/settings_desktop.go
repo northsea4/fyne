@@ -41,14 +41,10 @@ func watchFile(path string, callback func()) *fsnotify.Watcher {
 
 	go func() {
 		for event := range watcher.Events {
+			if filepath.Clean(event.Name) != filepath.Clean(path) {
+				continue
+			}
 			if event.Op.Has(fsnotify.Remove) { // if it was deleted then watch again
-				err = watcher.Remove(path)
-				if err != nil {
-					fyne.LogError("failed to stop watching removed settings file", err)
-					// fsnotify used to return false positives (https://github.com/fsnotify/fsnotify/issues/268).
-					// So, don’t return but just continue here.
-				}
-
 				watchFileAddTarget(watcher, path)
 			} else {
 				fyne.Do(callback)
