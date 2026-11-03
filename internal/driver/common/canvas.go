@@ -314,7 +314,16 @@ func (c *Canvas) CheckDirtyAndClear() bool {
 // SetDirty sets canvas dirty flag atomically.
 func (c *Canvas) SetDirty() {
 	c.dirty = true
+	if a := fyne.CurrentApp(); a != nil {
+		if d, ok := a.Driver().(interface{ WakeUp() }); ok {
+			d.WakeUp()
+		}
+	}
 }
+
+// IsDirty observes pending work without consuming it. Like painting, callers
+// must use the Fyne event thread; this does not make Canvas thread safe.
+func (c *Canvas) IsDirty() bool { return c.dirty }
 
 // SetMenuTreeAndFocusMgr sets menu tree and focus manager.
 //

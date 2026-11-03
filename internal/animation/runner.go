@@ -53,6 +53,13 @@ func (r *Runner) Start(a *fyne.Animation) {
 	}
 }
 
+// HasAnimations reports pending and active animations under the queue lock.
+func (r *Runner) HasAnimations() bool {
+	r.animationMutex.RLock()
+	defer r.animationMutex.RUnlock()
+	return len(r.animations) > 0 || len(r.pendingAnimations) > 0
+}
+
 // Stop causes an animation to stop ticking (if it was still running) and removes it from the runner.
 func (r *Runner) Stop(a *fyne.Animation) {
 	r.animationMutex.Lock()
@@ -87,16 +94,11 @@ func (r *Runner) Stop(a *fyne.Animation) {
 // TickAnimations progresses all running animations by one tick.
 // This will be called from the driver to update objects immediately before next paint.
 func (r *Runner) TickAnimations() {
-	if !r.runnerStarted {
-		return
-	}
-
-	done := r.runOneFrame()
-
-	if done {
-		r.animationMutex.Lock()
-		r.runnerStarted = false
-		r.animationMutex.Unlock()
+	r.animationMutex.RLock()
+	started := r.runnerStarted
+	r.animationMutex.RUnlock()
+	if started {
+		r.runOneFrame()
 	}
 }
 
@@ -119,6 +121,7 @@ func (r *Runner) runOneFrame() (done bool) {
 	clear(r.pendingAnimations)
 	r.pendingAnimations = r.pendingAnimations[:0]
 	done = len(r.animations) == 0
+	r.runnerStarted = !done
 	r.animationMutex.Unlock()
 	return done
 }

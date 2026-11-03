@@ -19,9 +19,9 @@ type funcData struct {
 	done chan struct{} // Zero allocation signalling channel
 }
 
-// channel for queuing functions on the main thread
+// queue for functions dispatched to the main thread
 var (
-	funcQueue        = async.NewUnboundedChan[funcData]()
+	funcQueue        = newMainWorkQueue()
 	running, drained atomic.Bool
 )
 
@@ -45,14 +45,17 @@ func runOnMainWithWait(f func(), wait bool) {
 		return
 	}
 
+	data := funcData{f: f}
 	if wait {
-		done := common.DonePool.Get()
-		defer common.DonePool.Put(done)
-
-		funcQueue.In() <- funcData{f: f, done: done}
-		<-done
-	} else {
-		funcQueue.In() <- funcData{f: f}
+		data.done = common.DonePool.Get()
+		defer common.DonePool.Put(data.done)
+	}
+	if !funcQueue.push(data) {
+		return
+	}
+	wakeUpDriver()
+	if wait {
+		<-data.done
 	}
 }
 
@@ -129,32 +132,19 @@ func (d *gLDriver) runGL() {
 		f()
 	}
 
+	if d.runIdleLoop() {
+		d.finishRun()
+		return
+	}
 	eventTick := time.NewTicker(time.Second / 60)
 	for {
 		select {
 		case <-d.done:
 			eventTick.Stop()
-			d.Terminate()
-			l := fyne.CurrentApp().Lifecycle().(*app.Lifecycle)
-			if f := l.OnStopped(); f != nil {
-				l.QueueEvent(f)
-			}
-
-			// as we are shutting down make sure we drain the pending funcQueue and close it out.
-			for len(funcQueue.Out()) > 0 {
-				f := <-funcQueue.Out()
-				if f.done != nil {
-					f.done <- struct{}{}
-				}
-			}
-			drained.Store(true)
-			funcQueue.Close()
+			d.finishRun()
 			return
-		case f := <-funcQueue.Out():
-			f.f()
-			if f.done != nil {
-				f.done <- struct{}{}
-			}
+		case <-funcQueue.notify:
+			runWork(funcQueue.take(), true)
 		case <-eventTick.C:
 			d.pollEvents()
 			for i := 0; i < len(d.windows); i++ {
@@ -189,6 +179,18 @@ func (d *gLDriver) runGL() {
 			d.animation.TickAnimations()
 			d.drawSingleFrame()
 		}
+	}
+}
+
+func (d *gLDriver) finishRun() {
+	cancelled := funcQueue.close()
+	drained.Store(true)
+	stopNativeWake()
+	d.Terminate()
+	runWork(cancelled, false)
+	l := fyne.CurrentApp().Lifecycle().(*app.Lifecycle)
+	if f := l.OnStopped(); f != nil {
+		l.QueueEvent(f)
 	}
 }
 
