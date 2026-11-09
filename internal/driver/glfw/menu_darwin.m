@@ -43,94 +43,111 @@ extern void exceptionCallback(const char*);
 NSMenu* nativeMainMenu();
 
 void assignDarwinSubmenu(const void* i, const void* m) {
-    NSMenu* menu = (NSMenu*)m; // this menu is created in the createDarwinMenu() function
-    NSMenuItem *item = (NSMenuItem*)i;
-    [item setSubmenu:menu]; // this retains the menu
-    [menu release]; // release the menu
+    @autoreleasepool {
+        NSMenu* menu = (NSMenu*)m; // this menu is created in the createDarwinMenu() function
+        NSMenuItem *item = (NSMenuItem*)i;
+        [item setSubmenu:menu]; // this retains the menu
+        [menu release]; // release the menu
+    }
 }
 
 void completeDarwinMenu(const void* m, bool prepend) {
-    NSMenu* main = nativeMainMenu();
-    NSMenuItem* top = [[NSMenuItem alloc] initWithTitle:@"" action:nil keyEquivalent:@""];
-    [top setTag:menuTagMin];
-    if (prepend) {
-        [main insertItem:top atIndex:1];
-    } else {
-        [main addItem:top];
+    @autoreleasepool {
+        NSMenu* main = nativeMainMenu();
+        NSMenuItem* top = [[NSMenuItem alloc] initWithTitle:@"" action:nil keyEquivalent:@""];
+        [top setTag:menuTagMin];
+        if (prepend) {
+            [main insertItem:top atIndex:1];
+        } else {
+            [main addItem:top];
+        }
+        assignDarwinSubmenu(top, m);
+        [top release]; // retained by the root menu
     }
-    assignDarwinSubmenu(top, m);
 }
 
 const void* createDarwinMenu(const char* label) {
-    return (void*)[[NSMenu alloc] initWithTitle:[NSString stringWithUTF8String:label]];
+    @autoreleasepool {
+        return (void*)[[NSMenu alloc] initWithTitle:[NSString stringWithUTF8String:label]];
+    }
 }
 
 const void* darwinAppMenu() {
-    return [[nativeMainMenu() itemAtIndex:0] submenu];
+    @autoreleasepool {
+        return [[nativeMainMenu() itemAtIndex:0] submenu];
+    }
 }
 
 void getTextColorRGBA(int* r, int* g, int* b, int* a) {
-  CGFloat fr, fg, fb, fa;
-  NSColor *c = [[NSColor selectedMenuItemTextColor] colorUsingColorSpace: [NSColorSpace sRGBColorSpace]];
-  [c getRed: &fr green: &fg blue: &fb alpha: &fa];
-  *r = fr*255.0;
-  *g = fg*255.0;
-  *b = fb*255.0;
-  *a = fa*255.0;
+    @autoreleasepool {
+      CGFloat fr, fg, fb, fa;
+      NSColor *c = [[NSColor selectedMenuItemTextColor] colorUsingColorSpace: [NSColorSpace sRGBColorSpace]];
+      [c getRed: &fr green: &fg blue: &fb alpha: &fa];
+      *r = fr*255.0;
+      *g = fg*255.0;
+      *b = fb*255.0;
+      *a = fa*255.0;
+    }
 }
 
 void handleException(const char* m, id e) {
-    exceptionCallback([[NSString stringWithFormat:@"%s failed: %@", m, e] UTF8String]);
+    @autoreleasepool {
+        exceptionCallback([[NSString stringWithFormat:@"%s failed: %@", m, e] UTF8String]);
+    }
 }
 
 int replacedAbout = 0;
 
 const void* insertDarwinMenuItem(const void* m, const char* label, const char* keyEquivalent, unsigned int keyEquivalentModifierMask, int nextId, int index, bool isSeparator, const void *imageData, unsigned int imageDataLength) {
-    NSMenu* menu = (NSMenu*)m;
-    NSMenuItem* item;
+    @autoreleasepool {
+        NSMenu* menu = (NSMenu*)m;
+        NSMenuItem* item;
 
-    if (strcmp(label, "About") == 0 && !replacedAbout) {
-        replacedAbout = 1;
-        item = [menu itemArray][0];
-        [item setAction:@selector(tapped:)];
-        [item setTarget:[FyneMenuHandler class]];
-        [item setTag:nextId+menuTagMin];
+        if (strcmp(label, "About") == 0 && !replacedAbout) {
+            replacedAbout = 1;
+            item = [menu itemArray][0];
+            [item setAction:@selector(tapped:)];
+            [item setTarget:[FyneMenuHandler class]];
+            [item setTag:nextId+menuTagMin];
+            return item;
+        }
+
+        if (isSeparator) {
+            item = [[NSMenuItem separatorItem] retain];
+        } else {
+            item = [[NSMenuItem alloc]
+                initWithTitle:[NSString stringWithUTF8String:label]
+                action:@selector(tapped:)
+                keyEquivalent:[NSString stringWithUTF8String:keyEquivalent]];
+            if (keyEquivalentModifierMask) {
+                [item setKeyEquivalentModifierMask: keyEquivalentModifierMask];
+            }
+            [item setTarget:[FyneMenuHandler class]];
+            [item setTag:nextId+menuTagMin];
+            if (imageData) {
+            char *x = (char *)imageData;
+                NSData *data = [[NSData alloc] initWithBytes: imageData length: imageDataLength];
+                NSImage *image = [[NSImage alloc] initWithData: data];
+                [item setImage: image];
+                [data release];
+                [image release];
+            }
+        }
+
+        if (index > -1) {
+            [menu insertItem:item atIndex:index];
+        } else {
+            [menu addItem:item];
+        }
+        [item release]; // retained by the menu
         return item;
     }
-
-    if (isSeparator) {
-        item = [[NSMenuItem separatorItem] retain];
-    } else {
-        item = [[NSMenuItem alloc]
-            initWithTitle:[NSString stringWithUTF8String:label]
-            action:@selector(tapped:)
-            keyEquivalent:[NSString stringWithUTF8String:keyEquivalent]];
-        if (keyEquivalentModifierMask) {
-            [item setKeyEquivalentModifierMask: keyEquivalentModifierMask];
-        }
-        [item setTarget:[FyneMenuHandler class]];
-        [item setTag:nextId+menuTagMin];
-        if (imageData) {
-        char *x = (char *)imageData;
-            NSData *data = [[NSData alloc] initWithBytes: imageData length: imageDataLength];
-            NSImage *image = [[NSImage alloc] initWithData: data];
-            [item setImage: image];
-            [data release];
-            [image release];
-        }
-    }
-
-    if (index > -1) {
-        [menu insertItem:item atIndex:index];
-    } else {
-        [menu addItem:item];
-    }
-    [item release]; // retained by the menu
-    return item;
 }
 
 int menuFontSize() {
-  return ceil([[NSFont menuFontOfSize: 0] pointSize]);
+    @autoreleasepool {
+      return ceil([[NSFont menuFontOfSize: 0] pointSize]);
+    }
 }
 
 NSMenu* nativeMainMenu() {
@@ -139,28 +156,30 @@ NSMenu* nativeMainMenu() {
 }
 
 void resetDarwinMenu() {
-    NSMenu *root = nativeMainMenu();
-    NSEnumerator *items = [[root itemArray] objectEnumerator];
+    @autoreleasepool {
+        NSMenu *root = nativeMainMenu();
+        NSEnumerator *items = [[root itemArray] objectEnumerator];
 
-    id object;
-    while (object = [items nextObject]) {
-        NSMenuItem *item = object;
-        if ([item tag] < menuTagMin) {
-            // check for inserted items (like Settings...)
-            NSMenu *menu = [item submenu];
-            NSEnumerator *subItems = [[menu itemArray] objectEnumerator];
+        id object;
+        while (object = [items nextObject]) {
+            NSMenuItem *item = object;
+            if ([item tag] < menuTagMin) {
+                // check for inserted items (like Settings...)
+                NSMenu *menu = [item submenu];
+                NSEnumerator *subItems = [[menu itemArray] objectEnumerator];
 
-            id sub;
-            while (sub = [subItems nextObject]) {
-                NSMenuItem *item = sub;
-                if ([item tag] >= menuTagMin) {
-                    [menu removeItem: item];
+                id sub;
+                while (sub = [subItems nextObject]) {
+                    NSMenuItem *item = sub;
+                    if ([item tag] >= menuTagMin) {
+                        [menu removeItem: item];
+                    }
                 }
-            }
 
-            continue;
+                continue;
+            }
+            [root removeItem: item];
         }
-        [root removeItem: item];
     }
 }
 

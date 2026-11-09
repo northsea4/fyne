@@ -22,6 +22,7 @@ import (
 #cgo LDFLAGS: -framework Foundation -framework AppKit
 
 #include <AppKit/AppKit.h>
+#include <stdlib.h>
 
 // Using void* as type for pointers is a workaround. See https://github.com/golang/go/issues/12065.
 void        assignDarwinSubmenu(const void*, const void*);
@@ -119,7 +120,9 @@ func clearNativeMenu() {
 }
 
 func createNativeMenu(w *window, menu *fyne.Menu, nextItemID int) (unsafe.Pointer, int) {
-	nsMenu := C.createDarwinMenu(C.CString(menu.Label))
+	label := C.CString(menu.Label)
+	defer C.free(unsafe.Pointer(label))
+	nsMenu := C.createDarwinMenu(label)
 	for _, item := range menu.Items {
 		nsMenuItem := insertNativeMenuItem(nsMenu, item, nextItemID, -1)
 		nextItemID = registerCallback(w, item, nextItemID)
@@ -153,17 +156,7 @@ func handleSpecialItems(w *window, menu *fyne.Menu, nextItemID int, addSeparator
 
 			insertNativeMenuItem(C.darwinAppMenu(), item, nextItemID, 1)
 			if addSeparator && item.Label != "About" {
-				C.insertDarwinMenuItem(
-					C.darwinAppMenu(),
-					C.CString(""),
-					C.CString(""),
-					C.uint(0),
-					C.int(nextItemID),
-					C.int(1),
-					C.bool(true),
-					unsafe.Pointer(nil),
-					C.uint(0),
-				)
+				insertNativeMenuItem(C.darwinAppMenu(), fyne.NewMenuItemSeparator(), nextItemID, 1)
 			}
 			nextItemID = registerCallback(w, item, nextItemID)
 		}
@@ -204,10 +197,13 @@ func insertNativeMenuItem(nsMenu unsafe.Pointer, item *fyne.MenuItem, nextItemID
 			imgDataLength = uint(len(item.Icon.Content()))
 		}
 	}
+	label, key := C.CString(item.Label), C.CString(keyEquivalent(item))
+	defer C.free(unsafe.Pointer(label))
+	defer C.free(unsafe.Pointer(key))
 	return C.insertDarwinMenuItem(
 		nsMenu,
-		C.CString(item.Label),
-		C.CString(keyEquivalent(item)),
+		label,
+		key,
 		C.uint(keyEquivalentModifierMask(item)),
 		C.int(nextItemID),
 		C.int(index),
