@@ -3,6 +3,7 @@ package widget
 import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/internal/cache"
 	"fyne.io/fyne/v2/theme"
 )
 
@@ -216,6 +217,12 @@ type labelRenderer struct {
 }
 
 func (r *labelRenderer) Destroy() {
+	// Layout also sizes the selection helper when Selectable is false. That
+	// helper is absent from Objects(), so canvas cleanup cannot reach it.
+	// Both objects belong to this renderer and must retire with it.
+	cache.DestroyRenderer(r.l.selection)
+	cache.DestroyRenderer(r.l.provider)
+	r.l.selection, r.l.provider = nil, nil
 }
 
 func (r *labelRenderer) Layout(s fyne.Size) {
