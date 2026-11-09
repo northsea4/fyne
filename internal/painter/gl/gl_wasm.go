@@ -214,6 +214,10 @@ func (c *xjsContext) DeleteProgram(program Program) {
 	gl.DeleteProgram(gl.Program(program))
 }
 
+func (c *xjsContext) DeleteShader(shader Shader) {
+	gl.DeleteShader(gl.Shader(shader))
+}
+
 func (c *xjsContext) DeleteTexture(texture Texture) {
 	gl.DeleteTexture(gl.Texture(texture))
 }
@@ -357,3 +361,5 @@ func toLEByteOrder(values ...float32) []byte {
 	}
 	return b
 }
+
+func (c *xjsContext) Finish() { gl.Finish() }

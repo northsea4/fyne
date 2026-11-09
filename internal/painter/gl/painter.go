@@ -228,6 +228,7 @@ func (p *painter) compileShader(source string, shaderType uint32) (Shader, error
 
 	info := p.ctx.GetShaderInfoLog(shader)
 	if p.ctx.GetShaderi(shader, compileStatus) == glFalse {
+		p.ctx.DeleteShader(shader)
 		return noShader, fmt.Errorf("failed to compile OpenGL shader:\n%s\n>>> SHADER SOURCE\n%s\n<<< SHADER SOURCE", info, source)
 	}
 
@@ -265,11 +266,13 @@ func (p *painter) createProgramFromSource(vertexSrc, fragmentSrc []byte) (Progra
 	if err != nil {
 		return noProgram, err
 	}
+	defer p.ctx.DeleteShader(vertShader)
 	fragShader, err := p.compileShader(string(fragmentSrc), fragmentShader)
 	if err != nil {
 		return noProgram, err
 	}
 
+	defer p.ctx.DeleteShader(fragShader)
 	prog := p.ctx.CreateProgram()
 	p.ctx.AttachShader(prog, vertShader)
 	p.ctx.AttachShader(prog, fragShader)
@@ -277,6 +280,7 @@ func (p *painter) createProgramFromSource(vertexSrc, fragmentSrc []byte) (Progra
 
 	info := p.ctx.GetProgramInfoLog(prog)
 	if p.ctx.GetProgrami(prog, linkStatus) == glFalse {
+		p.ctx.DeleteProgram(prog)
 		return noProgram, fmt.Errorf("failed to link OpenGL program:\n%s", info)
 	}
 
@@ -287,6 +291,7 @@ func (p *painter) createProgramFromSource(vertexSrc, fragmentSrc []byte) (Progra
 	}
 
 	if glErr := p.ctx.GetError(); glErr != 0 {
+		p.ctx.DeleteProgram(prog)
 		return noProgram, fmt.Errorf("failed to link OpenGL program; error code: %x", glErr)
 	}
 

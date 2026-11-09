@@ -227,6 +227,10 @@ func (c *coreContext) DeleteProgram(program Program) {
 	gl.DeleteProgram(uint32(program))
 }
 
+func (c *coreContext) DeleteShader(shader Shader) {
+	gl.DeleteShader(uint32(shader))
+}
+
 func (c *coreContext) DeleteTexture(texture Texture) {
 	tex := uint32(texture)
 	gl.DeleteTextures(1, &tex)
@@ -418,3 +422,5 @@ func (c *coreContext) Viewport(x, y, width, height int) {
 		int32(height), //gosec:disable G115 -- we are definitely fine with limiting the value range here
 	)
 }
+
+func (c *coreContext) Finish() { gl.Finish() }

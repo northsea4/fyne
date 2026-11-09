@@ -227,6 +227,10 @@ func (c *esContext) DeleteProgram(program Program) {
 	gl.DeleteProgram(uint32(program))
 }
 
+func (c *esContext) DeleteShader(shader Shader) {
+	gl.DeleteShader(uint32(shader))
+}
+
 func (c *esContext) DeleteTexture(texture Texture) {
 	tex := uint32(texture)
 	gl.DeleteTextures(1, &tex)
@@ -377,3 +381,5 @@ func (c *esContext) VertexAttribPointerWithOffset(attribute Attribute, size int,
 func (c *esContext) Viewport(x, y, width, height int) {
 	gl.Viewport(int32(x), int32(y), int32(width), int32(height))
 }
+
+func (c *esContext) Finish() { gl.Finish() }

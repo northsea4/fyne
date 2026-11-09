@@ -249,6 +249,10 @@ func (c *mobileContext) DeleteProgram(program Program) {
 	c.glContext.DeleteProgram(gl.Program(program))
 }
 
+func (c *mobileContext) DeleteShader(shader Shader) {
+	c.glContext.DeleteShader(gl.Shader(shader))
+}
+
 func (c *mobileContext) DeleteTexture(texture Texture) {
 	c.glContext.DeleteTexture(gl.Texture(texture))
 }
@@ -389,3 +393,5 @@ func toLEByteOrder(values ...float32) []byte {
 	}
 	return b
 }
+
+func (c *mobileContext) Finish() { c.glContext.Finish() }

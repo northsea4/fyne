@@ -248,6 +248,9 @@ func (w *window) Close() {
 		w.RunWithContext(func() {
 			cache.RangeTexturesFor(w.canvas, w.canvas.Painter().Free)
 			cache.DeleteTextTexturesFor(w.canvas)
+			if painter, ok := w.canvas.Painter().(interface{ Destroy() }); ok {
+				painter.Destroy()
+			}
 		})
 		w.closing = true
 		w.viewport.SetShouldClose(true)
@@ -974,10 +977,12 @@ func (w *window) RunWithContext(f func()) {
 		return
 	}
 	w.view().MakeContextCurrent()
-
+	defer w.DetachCurrentContext()
+	// GLFW drains its own Cocoa pool before returning to Go. Driver-created
+	// Metal/OpenGL objects from the subsequent Go draw calls need a pool too.
+	scope := beginContextScope()
+	defer endContextScope(scope)
 	f()
-
-	w.DetachCurrentContext()
 }
 
 func (w *window) Context() any {

@@ -18,11 +18,13 @@ type context interface {
 	CreateTexture() Texture
 	DeleteBuffer(buffer Buffer)
 	DeleteProgram(program Program)
+	DeleteShader(shader Shader)
 	DeleteTexture(texture Texture)
 	Disable(capability uint32)
 	DrawArrays(mode uint32, first, count int)
 	Enable(capability uint32)
 	EnableVertexAttribArray(attribute Attribute)
+	Finish()
 	GetAttribLocation(program Program, name string) Attribute
 	GetError() uint32
 	GetInteger(pname uint32) int
