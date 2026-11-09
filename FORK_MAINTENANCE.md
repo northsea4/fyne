@@ -19,6 +19,7 @@
 | 设置监听 | `app/settings_desktop.go`、`app/settings.go` | 忽略同目录的其他应用变动；一次 load 只通知一次 |
 | 旧字体清理 | `internal/painter/font.go` | ClearFontCache 同时重建 Harfbuzz shaper，释放旧字体 LRU 引用 |
 | 可见字形边界 | `internal/painter/cddrop_text.go`、`cddrop/text.go` | 复用 Fyne 实际 shaped runs，应用负责布局对齐 |
+| 窗口文字纹理释放 | `internal/driver/glfw/window.go` | Close 在所属 GL context 仍存活时删除按 canvas 索引的文字纹理，解除关闭窗口引用 |
 | macOS tracking 绘制 | `internal/driver/glfw/cddrop_present_darwin.go` | AppKit 嵌套拖放回调期间及时提交窗口；不重入事件循环 |
 
 不修改 widget 的默认样式/布局。透明窗口、置顶、菜单、拖动与 Finder 区域适配留在 cddrop `internal/windowhost`；上传、任务与设置持久化也留在应用。WASM 保留原 ticker 调度；桌面沿用同步 GLFW callbacks，不移植 #5422 的整套 eventQueue。
@@ -30,7 +31,7 @@
 cddrop 的正式依赖固定为：
 
 ```go
-replace fyne.io/fyne/v2 => github.com/northsea4/fyne/v2 v2.8.2-cddrop.1
+replace fyne.io/fyne/v2 => github.com/northsea4/fyne/v2 v2.8.2-cddrop.2
 ```
 
 保留 `require fyne.io/fyne/v2 v2.8.2` 和现有 imports。fork 的 module 路径仍为 `fyne.io/fyne/v2`，通过 Go 的 replace 下载和使用 GitHub fork。正常构建无需本地 `../fyne` 或项目内 `third_party/fyne`。
@@ -54,3 +55,7 @@ replace fyne.io/fyne/v2 => github.com/northsea4/fyne/v2 v2.8.2-cddrop.1
 当前只在 macOS ARM64 实测。浏览器驱动编译通过；Windows/Linux/Wayland 需要对应环境验证，不能据此保证近 0% CPU。
 
 回退时，cddrop 可以临时把 replace 恢复为 `./third_party/fyne`；其 host 会自动恢复旧事件兼容路径。保留该旧快照直到新版用户验收完成。
+
+## v2.8.2-cddrop.2
+
+修复独立结果窗口反复打开关闭时的文字纹理缓存累积。关闭前在所属窗口的 GL context 中释放普通纹理与文字纹理，再标记关闭；真实驱动回归覆盖多窗口隔离和重复关闭只释放一次。cddrop 以含多文件与部分失败结果的 60 次展开/收起及 60 次结果窗开关验证 physical footprint，正常生命周期与额外诊断 GC 分开记录。

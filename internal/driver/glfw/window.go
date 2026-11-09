@@ -243,10 +243,15 @@ func (w *window) Close() {
 		// Clean up accessibility resources
 		w.cleanupAccessibilityForWindow()
 
+		// Text textures are keyed by canvas and own GL deletion callbacks.
+		// Release them while this window still has a current, live context;
+		// otherwise the global cache retains the closed canvas indefinitely.
+		w.RunWithContext(func() {
+			cache.RangeTexturesFor(w.canvas, w.canvas.Painter().Free)
+			cache.DeleteTextTexturesFor(w.canvas)
+		})
 		w.closing = true
 		w.viewport.SetShouldClose(true)
-
-		cache.RangeTexturesFor(w.canvas, w.canvas.Painter().Free)
 		w.canvas.WalkTrees(nil, func(node *common.RenderCacheNode, _ fyne.Position) {
 			if wid, ok := node.Obj().(fyne.Widget); ok {
 				cache.DestroyRenderer(wid)
