@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"fyne.io/fyne/v2/internal/cache"
+	"fyne.io/fyne/v2/widget"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,5 +33,19 @@ func TestWindow_CloseReleasesOnlyItsTextTexturesOnce(t *testing.T) {
 	runOnMain(func() {
 		assert.Equal(t, 1, firstFreed)
 		assert.Equal(t, 1, secondFreed)
+	})
+}
+
+func TestWindow_CloseDoesNotRebuildRenderersForPendingPointer(t *testing.T) {
+	w := createWindow("closed pointer")
+	label := widget.NewLabel("closed result")
+	w.SetContent(label)
+	w.Close()
+	runOnMain(func() {
+		assert.False(t, cache.IsRendered(label))
+		w.window.mousePosUpdateProcessed = false
+		w.window.newMousePosX, w.window.newMousePosY = 10, 10
+		w.window.ensurePositionProcessed()
+		assert.False(t, cache.IsRendered(label))
 	})
 }

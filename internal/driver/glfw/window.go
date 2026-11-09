@@ -375,6 +375,11 @@ func (w *window) findObjectAtPositionMatching(canvas *glCanvas, mouse fyne.Posit
 }
 
 func (w *window) processMouseMoved(xpos float64, ypos float64) {
+	// The idle loop can flush a pending pointer position between Close and
+	// native destruction. Do not recreate renderers after their cleanup.
+	if w.closing {
+		return
+	}
 	previousPos := w.mousePos
 	w.mousePos = fyne.NewPos(scale.ToFyneCoordinate(w.canvas, int(xpos)), scale.ToFyneCoordinate(w.canvas, int(ypos)))
 	mousePos := w.mousePos
