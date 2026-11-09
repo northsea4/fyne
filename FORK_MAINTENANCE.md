@@ -33,7 +33,7 @@
 
 ## 版本与依赖
 
-以下是待发布候选版本；cddrop 当前正式依赖仍固定 `.1`，本分支没有发布新 tag：
+本轮发布版本（应用升级后固定此版本）：
 
 ```go
 replace fyne.io/fyne/v2 => github.com/northsea4/fyne/v2 v2.8.2-cddrop.2
@@ -61,10 +61,10 @@ replace fyne.io/fyne/v2 => github.com/northsea4/fyne/v2 v2.8.2-cddrop.2
 
 回退时，cddrop 可以临时把 replace 恢复为 `./third_party/fyne`；其 host 会自动恢复旧事件兼容路径。保留该旧快照直到新版用户验收完成。
 
-## v2.8.2-cddrop.2（未发布候选）
+## v2.8.2-cddrop.2
 
 修复独立结果窗口反复打开关闭时的文字纹理缓存累积。关闭前在所属窗口的 GL context 中释放普通纹理与文字纹理，再标记关闭，并忽略关闭后的排队鼠标事件，防止重新创建已销毁 renderer。Label renderer 同时释放私有的选择辅助控件和富文本 provider。关闭遍历包括已有 renderer 中的隐藏控件，防止滚动条和阴影脱离可见树后继续留在全局缓存。真实驱动回归覆盖多窗口隔离、重复关闭只释放一次、延迟鼠标事件及标签释放后重建。Go GL 绘制调用在 GLFW 局部 pool 返回后发生，macOS 额外建立 owned `NSAutoreleasePool`，以 Go defer 配对排空后再解绑当前 GL context；其他平台使用空实现。绘制器在窗口关闭前主动释放 GL 资源并完成队列删除；原生菜单入口建立局部 pool，菜单与 C 字符串的拥有引用配对释放。cddrop 以含多文件与部分失败结果的 60 次展开/收起及 60 次结果窗开关验证 physical footprint，正常生命周期与额外诊断 GC 分开记录。
 
 ### 验证限制
 
-本分支的 race tests、原生窗口/菜单回归与 WebGL 编译通过。真实桌面 60 次新建/销毁结果窗后 Go 堆约 64 MiB 且稳定，原生 footprint 第 10～60 次仍由约 135.6 增至 141.7 MiB；图形驱动 pipeline 对象持续增加。不能把这些补丁当作完整的原生内存修复。应用端采用单个结果窗口隐藏/复用，继续使用已发布 `.1`，不以额外 GC 或本地 replace 交付。
+本分支的 race tests、原生窗口/菜单回归与 WebGL 编译通过。真实桌面 60 次新建/销毁结果窗后 Go 堆约 64 MiB 且稳定，原生 footprint 第 10～60 次仍由约 135.6 增至 141.7 MiB；图形驱动 pipeline 对象持续增加。不能把这些补丁当作完整的原生内存修复。应用端采用单个结果窗口隐藏/复用，并固定已发布的远程版本，不以额外 GC 或本地 replace 交付。
