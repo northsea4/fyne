@@ -20,6 +20,7 @@
 | 旧字体清理 | `internal/painter/font.go` | ClearFontCache 同时重建 Harfbuzz shaper，释放旧字体 LRU 引用 |
 | 可见字形边界 | `internal/painter/cddrop_text.go`、`cddrop/text.go` | 复用 Fyne 实际 shaped runs，应用负责布局对齐 |
 | Label 私有对象释放 | `widget/label.go` | renderer 销毁时清理未进入可见树的选择辅助对象与富文本 provider |
+| 隐藏控件关闭清理 | `internal/driver/common/canvas.go`、`internal/driver/glfw/window.go` | 遍历已有缓存树，清理隐藏的滚动条、阴影及控件，不创建未渲染对象 |
 | 窗口文字纹理释放 | `internal/driver/glfw/window.go` | Close 在所属 GL context 仍存活时删除按 canvas 索引的文字纹理，解除关闭窗口引用 |
 | macOS tracking 绘制 | `internal/driver/glfw/cddrop_present_darwin.go` | AppKit 嵌套拖放回调期间及时提交窗口；不重入事件循环 |
 
@@ -59,4 +60,4 @@ replace fyne.io/fyne/v2 => github.com/northsea4/fyne/v2 v2.8.2-cddrop.2
 
 ## v2.8.2-cddrop.2
 
-修复独立结果窗口反复打开关闭时的文字纹理缓存累积。关闭前在所属窗口的 GL context 中释放普通纹理与文字纹理，再标记关闭，并忽略关闭后的排队鼠标事件，防止重新创建已销毁 renderer。Label renderer 同时释放私有的选择辅助控件和富文本 provider。真实驱动回归覆盖多窗口隔离、重复关闭只释放一次、延迟鼠标事件及标签释放后重建。cddrop 以含多文件与部分失败结果的 60 次展开/收起及 60 次结果窗开关验证 physical footprint，正常生命周期与额外诊断 GC 分开记录。
+修复独立结果窗口反复打开关闭时的文字纹理缓存累积。关闭前在所属窗口的 GL context 中释放普通纹理与文字纹理，再标记关闭，并忽略关闭后的排队鼠标事件，防止重新创建已销毁 renderer。Label renderer 同时释放私有的选择辅助控件和富文本 provider。关闭遍历包括已有 renderer 中的隐藏控件，防止滚动条和阴影脱离可见树后继续留在全局缓存。真实驱动回归覆盖多窗口隔离、重复关闭只释放一次、延迟鼠标事件及标签释放后重建。cddrop 以含多文件与部分失败结果的 60 次展开/收起及 60 次结果窗开关验证 physical footprint，正常生命周期与额外诊断 GC 分开记录。

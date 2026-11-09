@@ -365,7 +365,41 @@ func (c *Canvas) Unfocus() {
 	}
 }
 
-// WalkTrees walks over the trees.
+// WalkCachedTrees visits cached descendants, including hidden widgets, without
+// creating renderers for widgets that have never been displayed. Owners use it
+// when retiring a canvas; visible-only traversal misses scrollbars and shadows.
+func (c *Canvas) WalkCachedTrees(after func(fyne.CanvasObject)) {
+	var walk func(fyne.CanvasObject)
+	walk = func(obj fyne.CanvasObject) {
+		if obj == nil {
+			return
+		}
+		switch object := obj.(type) {
+		case *fyne.Container:
+			for _, child := range object.Objects {
+				walk(child)
+			}
+		case fyne.Widget:
+			if renderer, ok := cache.CachedRenderer(object); ok {
+				for _, child := range renderer.Objects() {
+					walk(child)
+				}
+			}
+		}
+		after(obj)
+	}
+	trees := []*renderCacheTree{c.contentTree, c.mWindowHeadTree, c.menuTree}
+	for _, tree := range c.overlays.renderCaches {
+		trees = append(trees, tree)
+	}
+	for _, tree := range trees {
+		if tree != nil && tree.root != nil {
+			walk(tree.root.obj)
+		}
+	}
+}
+
+// WalkTrees walks over the visible trees.
 func (c *Canvas) WalkTrees(
 	beforeChildren func(*RenderCacheNode, fyne.Position),
 	afterChildren func(*RenderCacheNode, fyne.Position),

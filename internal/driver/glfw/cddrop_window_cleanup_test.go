@@ -5,6 +5,7 @@ package glfw
 import (
 	"testing"
 
+	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/internal/cache"
 	"fyne.io/fyne/v2/widget"
 	"github.com/stretchr/testify/assert"
@@ -33,6 +34,27 @@ func TestWindow_CloseReleasesOnlyItsTextTexturesOnce(t *testing.T) {
 	runOnMain(func() {
 		assert.Equal(t, 1, firstFreed)
 		assert.Equal(t, 1, secondFreed)
+	})
+}
+
+func TestWindow_CloseReleasesCachedHiddenWidgets(t *testing.T) {
+	w := createWindow("hidden cleanup")
+	hidden := widget.NewButton("hidden action", nil)
+	hidden.Hide()
+	content := container.NewStack(widget.NewLabel("visible"), hidden)
+	w.SetContent(content)
+	unused := widget.NewButton("never rendered", nil)
+	unused.Hide()
+	runOnMain(func() {
+		hidden.MinSize()
+		assert.True(t, cache.IsRendered(hidden))
+		content.Objects = append(content.Objects, unused)
+		assert.False(t, cache.IsRendered(unused))
+	})
+	w.Close()
+	runOnMain(func() {
+		assert.False(t, cache.IsRendered(hidden))
+		assert.False(t, cache.IsRendered(unused))
 	})
 }
 
